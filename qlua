@@ -1,0 +1,210 @@
+local UserInputService = game:GetService("UserInputService")
+local player = game.Players.LocalPlayer
+
+-- ========== GUI ==========
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "JumpMacroUI"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 250, 0, 260)
+frame.Position = UDim2.new(0, 100, 0, 100)
+frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+frame.BorderSizePixel = 2
+frame.Active = true
+frame.Draggable = true
+frame.Parent = screenGui
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 30)
+title.BackgroundTransparency = 1
+title.Text = "Q Jump Macro (3 in 1)"
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.TextScaled = true
+title.Font = Enum.Font.SourceSansBold
+title.Parent = frame
+
+local toggleBtn = Instance.new("TextButton")
+toggleBtn.Size = UDim2.new(0, 120, 0, 28)
+toggleBtn.Position = UDim2.new(0.5, -60, 0, 35)
+toggleBtn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+toggleBtn.Text = "On"
+toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleBtn.Parent = frame
+
+-- Состояния прыжков (включены/выключены)
+local jumpStates = {
+    j1 = true,
+    j2 = true,
+    j3 = true
+}
+
+-- Функция для создания секции прыжка с чекбоксом
+local function createJumpSection(parent, yPos, titleText, defaultDelay, defaultHeight, stateRef)
+    local section = Instance.new("Frame")
+    section.Size = UDim2.new(1, -10, 0, 55)
+    section.Position = UDim2.new(0, 5, 0, yPos)
+    section.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+    section.BorderSizePixel = 0
+    section.Parent = parent
+
+    -- Чек-бокс (кнопка с галочкой)
+    local checkBtn = Instance.new("TextButton")
+    checkBtn.Size = UDim2.new(0, 55, 0, 20)
+    checkBtn.Position = UDim2.new(0, 5, 0, 3)
+    checkBtn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+    checkBtn.Text = "☑ " .. titleText
+    checkBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    checkBtn.Font = Enum.Font.SourceSansBold
+    checkBtn.TextScaled = true
+    checkBtn.Parent = section
+
+    -- Обновление галочки при клике
+    checkBtn.MouseButton1Click:Connect(function()
+        stateRef = not stateRef  -- инвертируем
+        checkBtn.Text = stateRef and ("☑ " .. titleText) or ("☐ " .. titleText)
+    end)
+
+    -- Время (секунды)
+    local delayLbl = Instance.new("TextLabel")
+    delayLbl.Size = UDim2.new(0, 30, 0, 20)
+    delayLbl.Position = UDim2.new(0, 65, 0, 3)
+    delayLbl.BackgroundTransparency = 1
+    delayLbl.Text = "Time:"
+    delayLbl.TextColor3 = Color3.fromRGB(200, 200, 200)
+    delayLbl.TextScaled = true
+    delayLbl.Parent = section
+
+    local delayBox = Instance.new("TextBox")
+    delayBox.Size = UDim2.new(0, 40, 0, 20)
+    delayBox.Position = UDim2.new(0, 98, 0, 3)
+    delayBox.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    delayBox.Text = defaultDelay
+    delayBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+    delayBox.Parent = section
+
+    -- Высота
+    local heightLbl = Instance.new("TextLabel")
+    heightLbl.Size = UDim2.new(0, 35, 0, 20)
+    heightLbl.Position = UDim2.new(0, 145, 0, 3)
+    heightLbl.BackgroundTransparency = 1
+    heightLbl.Text = "Height:"
+    heightLbl.TextColor3 = Color3.fromRGB(200, 200, 200)
+    heightLbl.TextScaled = true
+    heightLbl.Parent = section
+
+    local heightBox = Instance.new("TextBox")
+    heightBox.Size = UDim2.new(0, 50, 0, 20)
+    heightBox.Position = UDim2.new(0, 185, 0, 3)
+    heightBox.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    heightBox.Text = defaultHeight
+    heightBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+    heightBox.Parent = section
+
+    -- Возвращаем ссылки, чтобы потом читать значения
+    return delayBox, heightBox, checkBtn, function() return stateRef end
+end
+
+-- Создаём 3 секции
+local j1DelayBox, j1HeightBox, j1Check, getJ1 = createJumpSection(frame, 70, "J1", "0.5", "50", jumpStates.j1)
+local j2DelayBox, j2HeightBox, j2Check, getJ2 = createJumpSection(frame, 130, "J2", "0.2", "50", jumpStates.j2)
+local j3DelayBox, j3HeightBox, j3Check, getJ3 = createJumpSection(frame, 190, "J3", "0.2", "50", jumpStates.j3)
+
+-- Общий кулдаун
+local cdLabel = Instance.new("TextLabel")
+cdLabel.Size = UDim2.new(0.5, -10, 0, 25)
+cdLabel.Position = UDim2.new(0, 5, 0, 230)
+cdLabel.BackgroundTransparency = 1
+cdLabel.Text = "Cooldown:"
+cdLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+cdLabel.TextXAlignment = Enum.TextXAlignment.Left
+cdLabel.Parent = frame
+
+local cdBox = Instance.new("TextBox")
+cdBox.Size = UDim2.new(0.5, -10, 0, 25)
+cdBox.Position = UDim2.new(0.5, 0, 0, 230)
+cdBox.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+cdBox.Text = "3"
+cdBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+cdBox.Parent = frame
+
+-- ========== ЛОГИКА ==========
+local enabled = true
+local processing = false
+local lastJumpTime = nil
+local pressedKeys = {}
+
+toggleBtn.MouseButton1Click:Connect(function()
+    enabled = not enabled
+    toggleBtn.Text = enabled and "On" or "Off"
+    toggleBtn.BackgroundColor3 = enabled and Color3.fromRGB(70, 70, 70) or Color3.fromRGB(120, 20, 20)
+end)
+
+UserInputService.InputBegan:Connect(function(input, gp)
+    if not gp then pressedKeys[input.KeyCode] = true end
+end)
+
+UserInputService.InputEnded:Connect(function(input, gp)
+    if not gp then pressedKeys[input.KeyCode] = nil end
+end)
+
+local function getValue(box, default)
+    local val = tonumber(box.Text)
+    if val == nil or val < 0 then return default end
+    return val
+end
+
+-- Проверка, что хотя бы один прыжок включён
+local function anyJumpEnabled()
+    return getJ1() or getJ2() or getJ3()
+end
+
+UserInputService.InputBegan:Connect(function(input, gp)
+    if input.KeyCode ~= Enum.KeyCode.Q or gp or not enabled then return end
+
+    -- Защита: Q должна быть нажата одна
+    for key, _ in pairs(pressedKeys) do
+        if key ~= Enum.KeyCode.Q then return end
+    end
+    if processing then return end
+    if not anyJumpEnabled() then return end  -- если всё выключено — выходим
+
+    -- Кулдаун
+    local cooldown = getValue(cdBox, 3)
+    local now = os.clock()
+    if lastJumpTime and (now - lastJumpTime < cooldown) then return end
+
+    processing = true
+    local char = player.Character
+
+    -- Прыжок 1
+    if getJ1() then
+        task.wait(getValue(j1DelayBox, 0.5))
+        char = player.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            char.HumanoidRootPart.Velocity = Vector3.new(0, getValue(j1HeightBox, 50), 0)
+        end
+    end
+
+    -- Прыжок 2
+    if getJ2() then
+        task.wait(getValue(j2DelayBox, 0.2))
+        char = player.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            char.HumanoidRootPart.Velocity = Vector3.new(0, getValue(j2HeightBox, 50), 0)
+        end
+    end
+
+    -- Прыжок 3
+    if getJ3() then
+        task.wait(getValue(j3DelayBox, 0.2))
+        char = player.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            char.HumanoidRootPart.Velocity = Vector3.new(0, getValue(j3HeightBox, 50), 0)
+        end
+    end
+
+    lastJumpTime = os.clock()
+    processing = false
+end)
