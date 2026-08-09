@@ -25,7 +25,6 @@ title.TextScaled = true
 title.Font = Enum.Font.SourceSansBold
 title.Parent = frame
 
--- Кнопка сворачивания
 local collapseBtn = Instance.new("TextButton")
 collapseBtn.Size = UDim2.new(0, 20, 0, 20)
 collapseBtn.Position = UDim2.new(1, -25, 0, 5)
@@ -56,7 +55,6 @@ local function createJumpSection(i, yPos, enabled, delay, height)
     checkBtn.TextScaled = true
     checkBtn.Parent = section
 
-    -- Клик по чекбоксу
     checkBtn.MouseButton1Click:Connect(function()
         local isEnabled = checkBtn.Text:sub(1, 1) == "☑"
         checkBtn.Text = (isEnabled and "☐ " or "☑ ") .. "J" .. i
@@ -99,11 +97,8 @@ local function createJumpSection(i, yPos, enabled, delay, height)
     sections[i] = {checkBtn = checkBtn, delayBox = delayBox, heightBox = heightBox}
 end
 
--- Прыжок 1: время 0, высота 25, включён
 createJumpSection(1, 70, true, 0, 25)
--- Прыжок 2: время 0.3, высота 10, включён
 createJumpSection(2, 130, true, 0.3, 10)
--- Прыжок 3: время 0.2, высота 50, выключен
 createJumpSection(3, 190, false, 0.2, 50)
 
 -- ========== Кулдаун ==========
@@ -124,7 +119,6 @@ cdBox.Text = "5"
 cdBox.TextColor3 = Color3.fromRGB(255, 255, 255)
 cdBox.Parent = frame
 
--- ========== Тогл включения/выключения макроса ==========
 local toggleBtn = Instance.new("TextButton")
 toggleBtn.Size = UDim2.new(0, 120, 0, 28)
 toggleBtn.Position = UDim2.new(0.5, -60, 0, 35)
@@ -147,21 +141,17 @@ local normalHeight = frame.Size.Y.Offset
 local function toggleCollapse()
     expanded = not expanded
     collapseBtn.Text = expanded and "–" or "+"
-
     if expanded then
         frame.Size = UDim2.new(0, 250, 0, normalHeight)
     else
         frame.Size = UDim2.new(0, 250, 0, 30)
     end
-
-    -- Скрываем/показываем все элементы, кроме title и collapseBtn
     for _, child in ipairs(frame:GetChildren()) do
         if child ~= title and child ~= collapseBtn then
             child.Visible = expanded
         end
     end
 end
-
 collapseBtn.MouseButton1Click:Connect(toggleCollapse)
 
 -- ========== Логика прыжков ==========
@@ -191,29 +181,44 @@ local function anyJumpEnabled()
 end
 
 UserInputService.InputBegan:Connect(function(input, gp)
+    -- Отладка
+    print("Клавиша нажата:", input.KeyCode, "gameprocess:", gp, "enabled:", enabled)
+
     if input.KeyCode ~= Enum.KeyCode.Q or gp or not enabled then return end
 
-    -- Защита: Q должна быть одна
-    for key, _ in pairs(pressedKeys) do
-        if key ~= Enum.KeyCode.Q then return end
-    end
-    if processing then return end
-    if not anyJumpEnabled() then return end
+    -- Отладка: какие клавиши сейчас зажаты
+    local keys = {}
+    for k in pairs(pressedKeys) do table.insert(keys, k) end
+    print("Зажатые клавиши:", table.concat(keys, ", "))
 
-    -- Кулдаун
+    for key, _ in pairs(pressedKeys) do
+        if key ~= Enum.KeyCode.Q then print("Другая клавиша:", key, "-> блокируем"); return end
+    end
+
+    if processing then print("processing = true, блок"); return end
+    if not anyJumpEnabled() then print("Нет включённых прыжков"); return end
+
     local cooldown = getValue(cdBox, 5)
     local now = os.clock()
-    if lastJumpTime and (now - lastJumpTime < cooldown) then return end
+    if lastJumpTime and (now - lastJumpTime < cooldown) then print("Кулдаун"); return end
 
+    print("Прыжок запущен! Кулдаун:", cooldown)
     processing = true
     local char = player.Character
+    if not char then print("Нет персонажа"); processing = false; return end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then print("Нет HumanoidRootPart"); processing = false; return end
+    local humanoid = char:FindFirstChildOfClass("Humanoid")
+    if not humanoid then print("Нет Humanoid"); processing = false; return end
 
     -- Прыжок 1
     if sections[1].checkBtn.Text:sub(1, 1) == "☑" then
         task.wait(getValue(sections[1].delayBox, 0))
         char = player.Character
         if char and char:FindFirstChild("HumanoidRootPart") then
-            char.HumanoidRootPart.Velocity = Vector3.new(0, getValue(sections[1].heightBox, 25), 0)
+            local h = getValue(sections[1].heightBox, 25)
+            print("Прыжок 1: Height =", h)
+            char.HumanoidRootPart.Velocity = Vector3.new(0, h, 0)
         end
     end
 
@@ -222,19 +227,24 @@ UserInputService.InputBegan:Connect(function(input, gp)
         task.wait(getValue(sections[2].delayBox, 0.3))
         char = player.Character
         if char and char:FindFirstChild("HumanoidRootPart") then
-            char.HumanoidRootPart.Velocity = Vector3.new(0, getValue(sections[2].heightBox, 10), 0)
+            local h = getValue(sections[2].heightBox, 10)
+            print("Прыжок 2: Height =", h)
+            char.HumanoidRootPart.Velocity = Vector3.new(0, h, 0)
         end
     end
 
-    -- Прыжок 3 (по умолчанию выключен)
+    -- Прыжок 3
     if sections[3].checkBtn.Text:sub(1, 1) == "☑" then
         task.wait(getValue(sections[3].delayBox, 0.2))
         char = player.Character
         if char and char:FindFirstChild("HumanoidRootPart") then
-            char.HumanoidRootPart.Velocity = Vector3.new(0, getValue(sections[3].heightBox, 50), 0)
+            local h = getValue(sections[3].heightBox, 50)
+            print("Прыжок 3: Height =", h)
+            char.HumanoidRootPart.Velocity = Vector3.new(0, h, 0)
         end
     end
 
     lastJumpTime = os.clock()
     processing = false
+    print("Прыжок завершён")
 end)
